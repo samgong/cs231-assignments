@@ -65,7 +65,8 @@ def sgd_momentum(w, dw, config=None):
     # TODO: Implement the momentum update formula. Store the updated value in #
     # the next_w variable. You should also use and update the velocity v.     #
     ###########################################################################
-    pass
+    v = config.get('momentum') * v - config.get('learning_rate') * dw
+    next_w = w + v
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -99,7 +100,10 @@ def rmsprop(w, dw, config=None):
     # in the next_w variable. Don't forget to update cache value stored in    #
     # config['cache'].                                                        #
     ###########################################################################
-    pass
+    decay_rate = config['decay_rate']
+    cache = decay_rate * config['cache'] + (1 - decay_rate) * dw ** 2
+    next_w = w - config['learning_rate'] * dw / (np.sqrt(cache) + config['epsilon'])
+    config['cache'] = cache
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -139,7 +143,15 @@ def adam(w, dw, config=None):
     # NOTE: In order to match the reference output, please modify t _before_  #
     # using it in any calculations.                                           #
     ###########################################################################
-    pass
+
+    t, beta1, beta2 = config['t'], config['beta1'], config['beta2']
+    t += 1
+    m = beta1 * config['m'] + (1 - beta1) * dw
+    v = beta2 * config['v'] + (1 - beta2) * (dw ** 2)
+    config['t'], config['m'], config['v'] = t, m, v
+    next_w = w - config['learning_rate'] * (m / (1 - beta1 ** t)) \
+            / (np.sqrt(v / (1 - beta2 ** t)) + config['epsilon'])
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
