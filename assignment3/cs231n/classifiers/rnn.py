@@ -142,12 +142,20 @@ class CaptioningRNN(object):
         ############################################################################
         h0, cache0 = affine_forward(features, W_proj, b_proj) 
         x, cachex = word_embedding_forward(captions_in, W_embed)
-        h, cacheh = rnn_forward(x, h0, Wx, Wh, b)
+        if self.cell_type=='rnn':
+            h, cacheh = rnn_forward(x, h0, Wx, Wh, b)
+        elif self.cell_type=='lstm':
+            h, cacheh = lstm_forward(x, h0, Wx, Wh, b)
         h2, cache2 = temporal_affine_forward(h, W_vocab, b_vocab)
         loss, dout = temporal_softmax_loss(h2, captions_out, mask)
 
         dout, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dout, cache2)
-        dout, dh0, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(dout, cacheh)
+
+        if self.cell_type=='rnn':
+            dout, dh0, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(dout, cacheh)
+        elif self.cell_type=='lstm':
+            dout, dh0, grads['Wx'], grads['Wh'], grads['b'] = lstm_backward(dout, cacheh)
+
         grads['W_embed'] = word_embedding_backward(dout, cachex)
         _, grads['W_proj'], grads['b_proj'] = affine_backward(dh0, cache0)
         
@@ -219,9 +227,16 @@ class CaptioningRNN(object):
         h, _ = affine_forward(features, W_proj, b_proj) 
         x_pre = self._start * np.ones((N,1), dtype= np.int32)
         H = h.shape[1]
+        c = np.zeros((N,H))
+
         for i in range(max_length):
             x, _ = word_embedding_forward(x_pre, W_embed)
-            h, _ = rnn_step_forward(x.reshape(N,-1), h, Wx, Wh, b) 
+            
+            if self.cell_type=='rnn':
+                h, _ = rnn_step_forward(x.reshape(N,-1), h, Wx, Wh, b) 
+            elif self.cell_type=='lstm':
+                h, c, _ = lstm_step_forward(x.reshape(N,-1), h, c, Wx, Wh, b) 
+
             scores, _ = temporal_affine_forward(h.reshape(N,1,-1), W_vocab, b_vocab)
             captions[:,i] = np.argmax(scores.reshape(N,-1),1)
             x_pre = captions[:,i]
